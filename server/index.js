@@ -17,6 +17,25 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
+// Setup/Reset Route (Use this once if login fails)
+app.get('/api/setup-db', async (req, res) => {
+  try {
+    await sequelize.sync();
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    const [admin, created] = await User.findOrCreate({
+      where: { username: 'admin' },
+      defaults: {
+        password: hashedPassword,
+        role: 'teacher',
+        fullName: 'Saad Bin Usman'
+      }
+    });
+    res.json({ message: 'Database synced', adminCreated: created, username: 'admin' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Database Sync and Seed
 async function initDb() {
   try {
