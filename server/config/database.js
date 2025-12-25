@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const path = require('path');
+const pg = require('pg'); // Explicitly require pg for Vercel/Sequelize bundling
 
 let sequelize;
 
