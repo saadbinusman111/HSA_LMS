@@ -1,0 +1,14 @@
+# Handle line endings automatically for files detected as text
+# and perform LF normalization (conversion of CRLF to LF on commit).
+* text=auto
+
+# Explicitly set line endings to LF for configuration files
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.svg text eol=lf
