@@ -3,9 +3,11 @@ const path = require('path');
 
 let sequelize;
 
-if (process.env.POSTGRES_URL) {
+const dbUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.STORAGE_URL;
+
+if (dbUrl) {
   // Production: Use Vercel Postgres
-  sequelize = new Sequelize(process.env.POSTGRES_URL, {
+  sequelize = new Sequelize(dbUrl, {
     dialect: 'postgres',
     dialectOptions: {
       ssl: {
