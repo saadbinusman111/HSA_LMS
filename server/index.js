@@ -36,15 +36,12 @@ app.get('/api/setup-db', async (req, res) => {
   }
 });
 
-// Database Sync and Seed
+// Database Sync and Seed (Only run automatically in development)
 async function initDb() {
+  if (process.env.NODE_ENV === 'production') return;
   try {
-    // Use the default sync to preserve data. 
-    // SQLite often crashes with { alter: true } due to backup table conflicts.
     await sequelize.sync(); 
     console.log('Database synced successfully.');
-
-    // Check if admin exists
     const admin = await User.findOne({ where: { role: 'teacher' } });
     if (!admin) {
       const hashedPassword = await bcrypt.hash('123456', 10);
@@ -54,15 +51,23 @@ async function initDb() {
         role: 'teacher',
         fullName: 'Saad Bin Usman'
       });
-      console.log('Default Teacher Account Created: admin / 123456');
     }
-
   } catch (err) {
     console.error('Database initialization error:', err);
   }
 }
 
 initDb();
+
+// Global Error Handler for Vercel
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Internal Server Error', 
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined 
+  });
+});
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
