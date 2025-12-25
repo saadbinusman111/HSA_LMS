@@ -18,8 +18,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/client/$1",
-      "check": true
+      "destination": "/client/$1"
     },
     {
       "source": "/(.*)",
