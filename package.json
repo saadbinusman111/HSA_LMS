@@ -2,6 +2,10 @@
   "name": "hsa-lms-root",
   "version": "1.0.0",
   "private": true,
+  "dependencies": {
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4"
+  },
   "scripts": {
     "client-install": "npm install --prefix client",
     "server-install": "npm install --prefix server",
