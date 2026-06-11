@@ -47,7 +47,6 @@ exports.enrollStudent = async (req, res) => {
       return res.status(404).json({ message: 'Class or User not found' });
     }
 
-    // Manual check/create in Enrollment table to be safe
     const [enrollment, created] = await Enrollment.findOrCreate({
       where: { ClassId: classId, UserId: studentId }
     });
@@ -90,11 +89,9 @@ exports.deleteClass = async (req, res) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // Delete dependencies manually to ensure no errors
     await Enrollment.destroy({ where: { ClassId: id } });
     await Material.destroy({ where: { ClassId: id } });
     
-    // For assignments, delete submissions first
     const assignments = await Assignment.findAll({ where: { ClassId: id } });
     const assignmentIds = assignments.map(a => a.id);
     if (assignmentIds.length > 0) {
@@ -106,7 +103,6 @@ exports.deleteClass = async (req, res) => {
     await Attendance.destroy({ where: { ClassId: id } });
     await Result.destroy({ where: { ClassId: id } });
 
-    // Finally delete the class
     await classObj.destroy();
 
     res.json({ message: 'Class deleted successfully' });
@@ -114,4 +110,33 @@ exports.deleteClass = async (req, res) => {
     console.error('Delete class error:', error);
     res.status(500).json({ error: error.message });
   }
+};
+
+// Remove Student from Class
+exports.removeStudentFromClass = async (req, res) => {
+  try {
+    const { classId, userId } = req.params;
+    
+    // This finds the specific link and removes it
+    const deleted = await Enrollment.destroy({
+      where: { ClassId: classId, UserId: userId }
+    });
+
+    if (deleted) {
+      res.json({ message: 'Student removed from class' });
+    } else {
+      res.status(404).json({ message: 'Record not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  createClass,
+  getAllClasses,
+  enrollStudent,
+  getClassDetails,
+  deleteClass,
+  removeStudentFromClass
 };
