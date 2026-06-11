@@ -101,8 +101,8 @@ export default function ClassManager() {
                 <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #eee' }}>
                   {u.fullName}
                   <button 
+                    className="btn-remove"
                     onClick={() => handleRemoveStudent(cls.id, u.id)}
-                    style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Remove
                   </button>
