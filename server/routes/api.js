@@ -41,6 +41,8 @@ router.get('/classes', verifyToken, classController.getAllClasses);
 router.get('/classes/:id', verifyToken, classController.getClassDetails);
 router.delete('/classes/:id', verifyTeacher, classController.deleteClass);
 router.post('/enroll', verifyTeacher, classController.enrollStudent);
+// Added Remove Student Route
+router.delete('/classes/:classId/students/:userId', verifyTeacher, classController.removeStudentFromClass);
 
 // === STUDENT MANAGEMENT (TEACHER ONLY) ===
 router.post('/register-student', verifyTeacher, authController.registerStudent);
