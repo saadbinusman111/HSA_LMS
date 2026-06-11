@@ -40,3 +40,21 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Styling for the Remove button */
+.btn-remove {
+  background-color: #ff4d4f; /* Modern Red */
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover effect to make it feel interactive */
+.btn-remove:hover {
+  background-color: #ff7875; /* Lighter red on hover */
+}
