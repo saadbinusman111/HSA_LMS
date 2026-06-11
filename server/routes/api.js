@@ -26,6 +26,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // === AUTH & SETTINGS ===
+router.post('/login', authController.login);
 router.post('/change-password', verifyToken, authController.changePassword);
 router.post('/change-username', verifyToken, authController.changeUsername);
 
