@@ -34,6 +34,22 @@ export default function ClassManager() {
     } catch (err) { console.error(err); }
   };
 
+  // --- NEW: Remove Student Function ---
+  const handleRemoveStudent = async (classId, userId) => {
+    if (!window.confirm("Are you sure you want to remove this student from this class?")) return;
+
+    try {
+      await axios.delete(`/api/classes/${classId}/students/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Student removed successfully");
+      fetchClasses(); // Refresh the list
+    } catch (err) {
+      alert("Failed to remove student");
+      console.error(err);
+    }
+  };
+
   const handleCreate = async () => {
     try {
       await axios.post('/api/classes', newClass, {
@@ -58,69 +74,50 @@ export default function ClassManager() {
   };
 
   const handleDeleteClass = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this class? This will delete all associated data (assignments, materials, attendance, etc.) permanently.")) return;
-
+    if (!window.confirm("Delete this class?")) return;
     try {
-      await axios.delete(`/api/classes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Remove from state immediately
+      await axios.delete(`/api/classes/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       setClasses(classes.filter(c => c.id !== id));
-      alert("Class deleted successfully");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete class");
-    }
+      alert("Class deleted");
+    } catch (err) { alert("Failed to delete class"); }
   };
 
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div className="title" style={{ margin: 0 }}>Class Management</div>
-        <button onClick={() => navigate(-1)} style={{ background: '#555', padding: '8px 20px', fontSize: '14px' }}>&larr; Go Back</button>
+        <div className="title">Class Management</div>
+        <button onClick={() => navigate(-1)} style={{ background: '#555' }}>&larr; Go Back</button>
       </div>
       
-      <div className="card" style={{ marginBottom: '30px' }}>
-        <h3>Create New Class</h3>
-        <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr 1fr auto' }}>
-          <input placeholder="Class Name" value={newClass.className} onChange={e => setNewClass({...newClass, className: e.target.value})} />
-          <input placeholder="Schedule" value={newClass.schedule} onChange={e => setNewClass({...newClass, schedule: e.target.value})} />
-          <select value={newClass.type} onChange={e => setNewClass({...newClass, type: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }}>
-            <option value="offline">Offline</option>
-            <option value="online">Online</option>
-          </select>
-          <button onClick={handleCreate}>Create</button>
-        </div>
-      </div>
-
       <div className="cards">
         {classes.map(cls => (
-          <div key={cls.id} className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>{cls.className}</h3>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ background: '#eee', padding: '5px 10px', borderRadius: '4px', fontSize: '12px' }}>{cls.type}</span>
-                <button 
-                  onClick={() => handleDeleteClass(cls.id)} 
-                  style={{ background: '#d32f2f', padding: '5px 10px', fontSize: '12px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white', marginTop: 0 }}
-                >
-                  Delete
-                </button>
-              </div>
+          <div key={cls.id} className="card" style={{ marginBottom: '20px' }}>
+            <h3>{cls.className} ({cls.type})</h3>
+            
+            {/* List students with Remove buttons */}
+            <div style={{ margin: '15px 0' }}>
+              <strong>Enrolled Students:</strong>
+              {cls.Users && cls.Users.map(u => (
+                <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #eee' }}>
+                  {u.fullName}
+                  <button 
+                    onClick={() => handleRemoveStudent(cls.id, u.id)}
+                    style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
-            <p style={{ margin: '10px 0', color: '#666' }}>{cls.schedule}</p>
-            <p><strong>Students Enrolled:</strong> {cls.Users ? cls.Users.length : 0}</p>
-            <div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-              <label style={{ fontSize: '12px' }}>Enroll Student:</label>
-              <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
-                <select style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} onChange={(e) => setSelectedStudent({ ...selectedStudent, [cls.id]: e.target.value })}>
-                  <option value="">Select Student</option>
-                  {students.map(s => ( <option key={s.id} value={s.id}>{s.fullName} ({s.username})</option> ))}
-                </select>
-                <button onClick={() => handleEnroll(cls.id)} style={{ padding: '8px 15px', marginTop: 0 }}>Add</button>
-              </div>
+
+            <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+              <select onChange={(e) => setSelectedStudent({ ...selectedStudent, [cls.id]: e.target.value })}>
+                <option value="">Add Student</option>
+                {students.map(s => ( <option key={s.id} value={s.id}>{s.fullName}</option> ))}
+              </select>
+              <button onClick={() => handleEnroll(cls.id)}>Add</button>
             </div>
-            <Link to={`/class/${cls.id}`} style={{ display: 'block', marginTop: '15px', textAlign: 'center', color: '#0a58ca', textDecoration: 'none', fontWeight: 'bold', border: '1px solid #0a58ca', padding: '8px', borderRadius: '6px' }}>Manage Content</Link>
+            <button onClick={() => handleDeleteClass(cls.id)} style={{ background: '#d32f2f', marginTop: '10px' }}>Delete Entire Class</button>
           </div>
         ))}
       </div>
