@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/logo.png';
 
 export default function Login({ setUser }) {
   const [username, setUsername] = useState('');
@@ -44,6 +45,7 @@ export default function Login({ setUser }) {
   return (
     <div className="login-box">
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+        <img src={logo} alt="HSA_LMS Logo" style={{ height: '60px', marginBottom: '15px' }} />
         <h2 style={{ color: '#1565C0', fontSize: '28px', fontWeight: 'bold' }}>HSA_LMS Login</h2>
         <p style={{ color: '#666', fontSize: '14px' }}>Smart Tuition Management System</p>
       </div>
