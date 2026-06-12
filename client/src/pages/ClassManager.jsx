@@ -111,13 +111,29 @@ export default function ClassManager() {
             </div>
 
             <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
-              <select onChange={(e) => setSelectedStudent({ ...selectedStudent, [cls.id]: e.target.value })}>
+              <Link 
+                to={`/class/${cls.id}`} 
+                style={{ 
+                  display: 'block', 
+                  marginBottom: '10px', 
+                  textAlign: 'center', 
+                  background: '#1565C0', 
+                  color: 'white', 
+                  textDecoration: 'none', 
+                  fontWeight: 'bold', 
+                  padding: '10px', 
+                  borderRadius: '8px' 
+                }}
+              >
+                Manage Content & Assignments
+              </Link>
+              <select onChange={(e) => setSelectedStudent({ ...selectedStudent, [cls.id]: e.target.value })} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '100%', marginBottom: '10px' }}>
                 <option value="">Add Student</option>
                 {students.map(s => ( <option key={s.id} value={s.id}>{s.fullName}</option> ))}
               </select>
-              <button onClick={() => handleEnroll(cls.id)}>Add</button>
+              <button onClick={() => handleEnroll(cls.id)} style={{ width: '100%' }}>Add Student to Class</button>
             </div>
-            <button onClick={() => handleDeleteClass(cls.id)} style={{ background: '#d32f2f', marginTop: '10px' }}>Delete Entire Class</button>
+            <button onClick={() => handleDeleteClass(cls.id)} style={{ background: '#d32f2f', marginTop: '10px', width: '100%' }}>Delete Entire Class</button>
           </div>
         ))}
       </div>
