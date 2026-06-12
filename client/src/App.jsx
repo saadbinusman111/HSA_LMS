@@ -51,12 +51,12 @@ function App() {
     }
   }, []);
 
-  // --- START: Idle Session Timeout Logic (10 Minutes) ---
+  // --- START: Idle Session Timeout Logic (5 Minutes) ---
   useEffect(() => {
     if (!user) return;
 
     let timeout;
-    const TIMEOUT_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+    const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     const handleLogout = () => {
       console.log("Session expired due to inactivity.");
