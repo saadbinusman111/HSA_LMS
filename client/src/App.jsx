@@ -51,6 +51,42 @@ function App() {
     }
   }, []);
 
+  // --- START: Idle Session Timeout Logic (10 Minutes) ---
+  useEffect(() => {
+    if (!user) return;
+
+    let timeout;
+    const TIMEOUT_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    const handleLogout = () => {
+      console.log("Session expired due to inactivity.");
+      localStorage.clear();
+      setUser(null);
+      window.location.href = '/'; // Redirect to login
+    };
+
+    const resetTimer = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(handleLogout, TIMEOUT_DURATION);
+    };
+
+    // Events that count as "activity"
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+
+    // Set initial timer
+    resetTimer();
+
+    // Add listeners
+    events.forEach(event => document.addEventListener(event, resetTimer));
+
+    // Cleanup on unmount or user change
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      events.forEach(event => document.removeEventListener(event, resetTimer));
+    };
+  }, [user]);
+  // --- END: Idle Session Timeout Logic ---
+
   const ProtectedRoute = ({ children, allowedRole }) => {
     if (!user) return <Navigate to="/" />;
     if (allowedRole && user.role !== allowedRole) return <Navigate to="/" />;
