@@ -73,6 +73,20 @@ export default function ResultHistory() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this result record?")) return;
+    try {
+      await axios.delete(`/api/results/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setResults(results.filter(r => r.id !== id));
+      alert("Result record deleted successfully.");
+    } catch (err) {
+      alert("Failed to delete result record.");
+      console.error(err);
+    }
+  };
+
   const openModal = (result) => {
     setCurrentResult({ ...result });
     setIsModalOpen(true);
@@ -151,7 +165,10 @@ export default function ResultHistory() {
                   </span>
                 </td>
                 <td>
-                  <button onClick={() => openModal(r)} style={{ padding: '5px 10px', fontSize: '12px', background: '#1976d2' }}>Edit</button>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <button onClick={() => openModal(r)} style={{ padding: '5px 10px', fontSize: '12px', background: '#1976d2' }}>Edit</button>
+                    <button onClick={() => handleDelete(r.id)} style={{ padding: '5px 10px', fontSize: '12px', background: '#d32f2f' }}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}

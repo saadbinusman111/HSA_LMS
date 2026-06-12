@@ -121,3 +121,19 @@ exports.updateResult = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.deleteResult = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await Result.findByPk(id);
+    if (!result) {
+      return res.status(404).json({ message: 'Result record not found' });
+    }
+
+    await result.destroy();
+    res.json({ message: 'Result record deleted successfully' });
+  } catch (error) {
+    console.error('Delete Result Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

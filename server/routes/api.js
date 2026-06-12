@@ -98,6 +98,7 @@ router.get('/fees-history', verifyTeacher, feeController.getAllFeesHistory);
 // === RESULT ROUTES ===
 router.post('/results/upload', verifyTeacher, resultController.uploadResults);
 router.put('/results/:id', verifyTeacher, resultController.updateResult);
+router.delete('/results/:id', verifyTeacher, resultController.deleteResult);
 router.get('/results/class/:classId', verifyTeacher, resultController.getClassResults);
 router.get('/results/history', verifyTeacher, resultController.getAllResultsHistory);
 router.get('/student/results', verifyToken, resultController.getMyResults);
