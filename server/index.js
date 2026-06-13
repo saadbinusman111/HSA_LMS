@@ -57,12 +57,13 @@ app.get('/api/setup-db', async (req, res) => {
   }
 });
 
-// Database Sync and Seed (Only run automatically in development)
+// Database Sync and Seed
 async function initDb() {
-  if (process.env.NODE_ENV === 'production') return;
   try {
-    await sequelize.sync(); 
-    console.log('Database synced successfully.');
+    // This will add missing columns/tables without deleting data
+    await sequelize.sync({ alter: true }); 
+    console.log('Database synced successfully with schema updates.');
+    
     const admin = await User.findOne({ where: { role: 'teacher' } });
     if (!admin) {
       const hashedPassword = await bcrypt.hash('123456', 10);
