@@ -60,10 +60,30 @@ app.get('/api/setup-db', async (req, res) => {
 // Database Sync and Seed
 async function initDb() {
   try {
-    // This will add missing columns/tables without deleting data
-    await sequelize.sync({ alter: true }); 
-    console.log('Database synced successfully with schema updates.');
+    await sequelize.authenticate();
+    console.log('Database connection established.');
+
+    // 1. Basic Sync (Ensure all tables exist)
+    await sequelize.sync(); 
+
+    // 2. Robust Column Addition (Safe way to update schema in production)
+    const queryInterface = sequelize.getQueryInterface();
+    const tableInfo = await queryInterface.describeTable('Users').catch(() => ({}));
     
+    if (!tableInfo.password_text) {
+      try {
+        const { DataTypes } = require('sequelize');
+        await queryInterface.addColumn('Users', 'password_text', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+        console.log('Successfully added password_text column to Users table.');
+      } catch (addColumnErr) {
+        console.log('Note: password_text column might already exist.');
+      }
+    }
+
+    // 3. Seed Admin
     const admin = await User.findOne({ where: { role: 'teacher' } });
     if (!admin) {
       const hashedPassword = await bcrypt.hash('123456', 10);
@@ -73,7 +93,10 @@ async function initDb() {
         role: 'teacher',
         fullName: 'Saad Bin Usman'
       });
+      console.log('Default admin created.');
     }
+    
+    console.log('Database initialization completed.');
   } catch (err) {
     console.error('Database initialization error:', err);
   }
