@@ -48,6 +48,7 @@ exports.registerStudent = async (req, res) => {
     const newUser = await User.create({
       username,
       password: hashedPassword,
+      password_text: password,
       role: 'student',
       fullName
     });

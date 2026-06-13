@@ -61,7 +61,10 @@ router.post('/students/:id/reset-password', verifyTeacher, async (req, res) => {
   try {
     const { newPassword } = req.body;
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.update({ password: hashedPassword }, { where: { id: req.params.id } });
+    await User.update({ 
+      password: hashedPassword,
+      password_text: newPassword 
+    }, { where: { id: req.params.id } });
     res.json({ message: 'Password reset successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

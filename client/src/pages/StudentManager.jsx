@@ -6,6 +6,7 @@ export default function StudentManager() {
   const [students, setStudents] = useState([]);
   const [newStudent, setNewStudent] = useState({ fullName: '', username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
@@ -57,9 +58,14 @@ export default function StudentManager() {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Password reset successfully');
+      fetchStudents();
     } catch (err) {
       alert('Failed to reset');
     }
+  };
+
+  const togglePasswordVisibility = (id) => {
+    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -110,6 +116,7 @@ export default function StudentManager() {
             <tr>
               <th>Name</th>
               <th>Username</th>
+              <th>Password</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -118,6 +125,24 @@ export default function StudentManager() {
               <tr key={std.id}>
                 <td>{std.fullName}</td>
                 <td>{std.username}</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ 
+                      fontSize: visiblePasswords[std.id] ? '14px' : '18px',
+                      fontFamily: visiblePasswords[std.id] ? 'inherit' : 'monospace',
+                      color: '#333'
+                    }}>
+                      {visiblePasswords[std.id] ? (std.password_text || 'Encrypted') : '••••••••'}
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => togglePasswordVisibility(std.id)}
+                      style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: 'auto', padding: '5px' }}
+                    >
+                      {visiblePasswords[std.id] ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
+                </td>
                 <td>
                   <button onClick={() => handleResetPassword(std.id)} style={{ padding: '6px 10px', background: '#f57c00', fontSize: '12px', marginRight: '5px' }}>Reset Pass</button>
                   <button onClick={() => handleDelete(std.id)} style={{ padding: '6px 10px', background: '#d32f2f', fontSize: '12px' }}>Remove</button>
