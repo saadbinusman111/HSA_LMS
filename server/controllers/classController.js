@@ -1,4 +1,4 @@
-const { Class, User, Enrollment, Material, Assignment, Submission, Message, Attendance, Result } = require('../models');
+const { Class, User, Enrollment, Material, Assignment, Submission, Message, Attendance, Result, Fee } = require('../models');
 
 exports.createClass = async (req, res) => {
   try {
@@ -60,10 +60,38 @@ exports.deleteClass = async (req, res) => {
 exports.removeStudentFromClass = async (req, res) => {
   try {
     const { classId, userId } = req.params;
-    const deleted = await Enrollment.destroy({ where: { ClassId: classId, UserId: userId } });
-    if (deleted) res.json({ message: 'Student removed' });
-    else res.status(404).json({ message: 'Record not found' });
+
+    // Check if user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // FULL CLEANUP LOGIC (System-wide Deletion)
+    // 1. Delete all Enrollments
+    await Enrollment.destroy({ where: { UserId: userId } });
+    
+    // 2. Delete all Attendance records
+    await Attendance.destroy({ where: { UserId: userId } });
+
+    // 3. Delete all Fee records
+    await Fee.destroy({ where: { UserId: userId } });
+
+    // 4. Delete all Result records
+    await Result.destroy({ where: { UserId: userId } });
+
+    // 5. Delete all Submissions
+    await Submission.destroy({ where: { UserId: userId } });
+
+    // 6. Delete all Messages sent by this student
+    await Message.destroy({ where: { senderId: userId } });
+
+    // 7. Finally, delete the User record itself (Removes from Student Management tab)
+    await user.destroy();
+
+    res.json({ message: 'Student and all associated records permanently removed from the system' });
   } catch (error) {
+    console.error('Full Student Deletion Error:', error);
     res.status(500).json({ error: error.message });
   }
 };

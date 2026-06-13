@@ -34,15 +34,25 @@ export default function ClassManager() {
     } catch (err) { console.error(err); }
   };
 
-  // --- NEW: Remove Student Function ---
+  // --- NEW: Remove Student Function with Security Warning ---
   const handleRemoveStudent = async (classId, userId) => {
-    if (!window.confirm("Are you sure you want to remove this student from this class?")) return;
+    const warningMessage = `⚠️ SECURITY WARNING: IMPORTANT NOTE\n\n` +
+      `Are you sure you want to delete this student?\n\n` +
+      `By proceeding, the following will happen:\n` +
+      `1. This student will be PERMANENTLY deleted from the entire LMS.\n` +
+      `2. ALL of their Attendance records will be DELETED.\n` +
+      `3. ALL of their Fee payment records will be DELETED.\n` +
+      `4. ALL of their Exam Results will be DELETED.\n` +
+      `5. They will be removed from the Student Management tab.\n\n` +
+      `This action CANNOT BE UNDONE. Do you still want to delete all their data?`;
+
+    if (!window.confirm(warningMessage)) return;
 
     try {
       await axios.delete(`/api/classes/${classId}/students/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Student removed successfully");
+      alert("Student and all associated records have been permanently deleted.");
       fetchClasses(); // Refresh the list
     } catch (err) {
       alert("Failed to remove student");
