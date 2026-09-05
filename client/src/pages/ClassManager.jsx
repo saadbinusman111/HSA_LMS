@@ -98,6 +98,44 @@ export default function ClassManager() {
         <div className="title">Class Management</div>
         <button onClick={() => navigate(-1)} style={{ background: '#555' }}>&larr; Go Back</button>
       </div>
+
+      {/* Class Creation Form Card */}
+      <div className="card" style={{ marginBottom: '30px' }}>
+        <h3>Create New Class</h3>
+        <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>Enter the details below to create a new class/batch.</p>
+        <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>CLASS NAME</label>
+            <input 
+              placeholder="e.g. Class 10 Chemistry" 
+              value={newClass.className} 
+              onChange={e => setNewClass({...newClass, className: e.target.value})}
+              style={{ padding: '11px', borderRadius: '8px', border: '1px solid #cbd5e0', width: '100%', background: '#fff' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>SCHEDULE</label>
+            <input 
+              placeholder="e.g. Mon, Wed, Fri - 10:00 AM" 
+              value={newClass.schedule} 
+              onChange={e => setNewClass({...newClass, schedule: e.target.value})}
+              style={{ padding: '11px', borderRadius: '8px', border: '1px solid #cbd5e0', width: '100%', background: '#fff' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>TYPE</label>
+            <select 
+              value={newClass.type} 
+              onChange={e => setNewClass({...newClass, type: e.target.value})}
+              style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e0', width: '100%', background: '#fff' }}
+            >
+              <option value="offline">Offline</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <button onClick={handleCreate} style={{ padding: '12px 30px', height: 'fit-content' }}>Create Class</button>
+        </div>
+      </div>
       
       <div className="cards">
         {classes.map(cls => (
