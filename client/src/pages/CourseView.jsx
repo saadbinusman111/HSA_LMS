@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function CourseView({ user }) {
   const { id } = useParams();
@@ -59,6 +61,67 @@ export default function CourseView({ user }) {
       });
       setMessages(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  const generateResultCardPDF = async (studentId, studentName, action) => {
+    try {
+      const res = await axios.get(`/api/classes/${id}/students/${studentId}/report`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const { student, classObj, results } = res.data;
+      
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text('HSA Hope Science Academy Result Card', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.text(`Student Name: ${student.fullName || studentName}`, 14, 30);
+      doc.text(`Class: ${classObj.className}`, 14, 38);
+      
+      let totalObtained = 0;
+      let totalMax = 0;
+      
+      const resultRows = results.map(r => {
+        let status = 'Present';
+        if(r.remarks && r.remarks.toLowerCase().includes('absent')) status = 'Absent';
+        else if(r.remarks && r.remarks.toLowerCase().includes('leave')) status = 'Leave';
+        
+        let percentage = r.totalMarks > 0 ? ((r.obtainedMarks / r.totalMarks) * 100).toFixed(2) + '%' : '0%';
+        
+        totalObtained += r.obtainedMarks;
+        totalMax += r.totalMarks;
+        
+        return [r.testName, r.testDate, r.totalMarks, r.obtainedMarks, percentage, status, r.remarks || ''];
+      });
+      
+      let overallPercentage = totalMax > 0 ? ((totalObtained / totalMax) * 100).toFixed(2) + '%' : 'N/A';
+      
+      autoTable(doc, {
+        startY: 45,
+        head: [['Subject/Test', 'Date', 'Total Marks', 'Obtained Marks', 'Percentage', 'Status', 'Remarks']],
+        body: resultRows,
+        theme: 'grid',
+        headStyles: { fillColor: [10, 88, 202] }
+      });
+      
+      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 45;
+      doc.text(`Total Marks: ${totalMax}`, 14, finalY + 10);
+      doc.text(`Total Obtained: ${totalObtained}`, 14, finalY + 18);
+      doc.text(`Overall Percentage: ${overallPercentage}`, 14, finalY + 26);
+      
+      if (action === 'preview') {
+        const pdfUrl = doc.output('bloburl');
+        window.open(pdfUrl, '_blank');
+      } else {
+        doc.save(`${student.fullName || studentName}_Result_Card.pdf`);
+      }
+      
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to generate result card: ${err.message || 'Unknown error'}`);
+    }
   };
 
   const handleUploadMaterial = async () => {
@@ -250,13 +313,40 @@ export default function CourseView({ user }) {
 
       {/* PEOPLE TAB */}
       {activeTab === 'people' && (
-        <div className="table-box">
+        <div className="table-box" style={{ overflowX: 'auto' }}>
           <h3>Enrolled Students</h3>
           <table>
-            <thead><tr><th>Name</th><th>Username</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Username</th>
+                {user.role === 'teacher' && <th>Result Card</th>}
+              </tr>
+            </thead>
             <tbody>
               {classData.Users?.map(u => (
-                <tr key={u.id}><td>{u.fullName}</td><td>{u.username}</td></tr>
+                <tr key={u.id}>
+                  <td>{u.fullName}</td>
+                  <td>{u.username}</td>
+                  {user.role === 'teacher' && (
+                    <td>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button 
+                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                          onClick={() => generateResultCardPDF(u.id, u.fullName, 'preview')}
+                        >
+                          Preview Result Card
+                        </button>
+                        <button 
+                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                          onClick={() => generateResultCardPDF(u.id, u.fullName, 'download')}
+                        >
+                          Download as PDF
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
               ))}
             </tbody>
           </table>
