@@ -17,9 +17,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
-// Direct mirror for /report route to prevent CORS/Header loss on redirect
-app.use('/report', apiRoutes);
-
 // Diagnostic Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -29,12 +26,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Setup/Reset Route
+// Setup/Reset Route (Use this once if login fails)
 app.get('/api/setup-db', async (req, res) => {
   console.log('Starting manual database setup...');
   try {
     await sequelize.authenticate();
+    
+    // Use the robust sync helper
     await syncPasswordColumn();
+
     await sequelize.sync({ alter: true });
     
     const hashedPassword = await bcrypt.hash('123456', 10);
@@ -55,20 +55,22 @@ app.get('/api/setup-db', async (req, res) => {
 
 async function syncPasswordColumn() {
   const queryInterface = sequelize.getQueryInterface();
-  const tableNames = ['Users', 'users'];
+  const tableNames = ['Users', 'users']; // Check both common case variations
   
   for (const tableName of tableNames) {
     try {
       const tableInfo = await queryInterface.describeTable(tableName).catch(() => null);
       if (tableInfo && !tableInfo.password_text) {
+        console.log(`Adding password_text to ${tableName}...`);
         const { DataTypes } = require('sequelize');
         await queryInterface.addColumn(tableName, 'password_text', {
           type: DataTypes.STRING,
           allowNull: true
         });
+        console.log(`Successfully added password_text to ${tableName}.`);
       }
     } catch (err) {
-      // Ignore table missing errors
+      // Ignore errors (e.g. table doesn't exist)
     }
   }
 }
@@ -77,9 +79,12 @@ async function syncPasswordColumn() {
 async function initDb() {
   try {
     await sequelize.authenticate();
+    console.log('Database connection established.');
+
     await syncPasswordColumn();
     await sequelize.sync(); 
 
+    // Seed Admin
     const admin = await User.findOne({ where: { role: 'teacher' } });
     if (!admin) {
       const hashedPassword = await bcrypt.hash('123456', 10);
@@ -90,6 +95,8 @@ async function initDb() {
         fullName: 'Saad Bin Usman'
       });
     }
+    
+    console.log('Database initialization completed.');
   } catch (err) {
     console.error('Database initialization error:', err);
   }
@@ -114,3 +121,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 module.exports = app;
+// triger it
