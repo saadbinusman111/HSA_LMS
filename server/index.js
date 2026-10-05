@@ -17,6 +17,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
+// Fallback direct endpoint for /report/:studentId (remaps to /api/report/:studentId)
+app.use('/report/:studentId', (req, res) => {
+  res.redirect(`/api/report/${req.params.studentId}`);
+});
+
 // Diagnostic Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -121,4 +126,3 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 module.exports = app;
-// triger it
