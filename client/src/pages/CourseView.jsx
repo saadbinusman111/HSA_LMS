@@ -1,355 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default function CourseView({ user }) {
-  const { id } = useParams();
-  const [activeTab, setActiveTab] = useState('content');
-  const [classData, setClassData] = useState(null);
-  const [materials, setMaterials] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [messages, setMessages] = useState([]);
+export default function CourseView() {
+  const { id } = useParams(); // class ID from URL
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('students'); // content, assignments, discussion, students
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const token = localStorage.getItem('token');
 
-  // Forms
-  const [file, setFile] = useState(null);
-  const [submissionFile, setSubmissionFile] = useState(null);
-  const [materialForm, setMaterialForm] = useState({ title: '', type: 'link', linkUrl: '', category: 'Week 1' });
-  const [assignmentForm, setAssignmentForm] = useState({ title: '', description: '', dueDate: '' });
-  const [newMessage, setNewMessage] = useState('');
-
   useEffect(() => {
-    fetchClassData();
-    fetchMaterials();
-    fetchAssignments();
-    if(activeTab === 'discussion') fetchMessages();
+    if (activeTab === 'students') {
+      fetchEnrolledStudents();
+    }
   }, [id, activeTab]);
 
-  const fetchClassData = async () => {
+  const fetchEnrolledStudents = async () => {
     try {
-      const res = await axios.get(`/api/classes/${id}`, {
+      setLoading(true);
+      const res = await axios.get(`/api/classes/${id}/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setClassData(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchMaterials = async () => {
-    try {
-      const res = await axios.get(`/api/classes/${id}/materials`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMaterials(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchAssignments = async () => {
-    try {
-      const res = await axios.get(`/api/classes/${id}/assignments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAssignments(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const res = await axios.get(`/api/classes/${id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessages(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const generateResultCardPDF = async (studentId, studentName, action) => {
-    try {
-      const res = await axios.get(`/api/classes/${id}/students/${studentId}/report`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const { student, classObj, results } = res.data;
-      
-      const doc = new jsPDF();
-      
-      doc.setFontSize(18);
-      doc.text('HSA Hope Science Academy Result Card', 105, 20, { align: 'center' });
-      
-      doc.setFontSize(12);
-      doc.text(`Student Name: ${student.fullName || studentName}`, 14, 30);
-      doc.text(`Class: ${classObj.className}`, 14, 38);
-      
-      let totalObtained = 0;
-      let totalMax = 0;
-      
-      const resultRows = results.map(r => {
-        let status = 'Present';
-        if(r.remarks && r.remarks.toLowerCase().includes('absent')) status = 'Absent';
-        else if(r.remarks && r.remarks.toLowerCase().includes('leave')) status = 'Leave';
-        
-        let percentage = r.totalMarks > 0 ? ((r.obtainedMarks / r.totalMarks) * 100).toFixed(2) + '%' : '0%';
-        
-        totalObtained += r.obtainedMarks;
-        totalMax += r.totalMarks;
-        
-        return [r.testName, r.testDate, r.totalMarks, r.obtainedMarks, percentage, status, r.remarks || ''];
-      });
-      
-      let overallPercentage = totalMax > 0 ? ((totalObtained / totalMax) * 100).toFixed(2) + '%' : 'N/A';
-      
-      autoTable(doc, {
-        startY: 45,
-        head: [['Subject/Test', 'Date', 'Total Marks', 'Obtained Marks', 'Percentage', 'Status', 'Remarks']],
-        body: resultRows,
-        theme: 'grid',
-        headStyles: { fillColor: [10, 88, 202] }
-      });
-      
-      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 45;
-      doc.text(`Total Marks: ${totalMax}`, 14, finalY + 10);
-      doc.text(`Total Obtained: ${totalObtained}`, 14, finalY + 18);
-      doc.text(`Overall Percentage: ${overallPercentage}`, 14, finalY + 26);
-      
-      if (action === 'preview') {
-        const pdfUrl = doc.output('bloburl');
-        window.open(pdfUrl, '_blank');
-      } else {
-        doc.save(`${student.fullName || studentName}_Result_Card.pdf`);
-      }
-      
+      setStudents(res.data);
     } catch (err) {
-      console.error(err);
-      alert(`Failed to generate result card: ${err.message || 'Unknown error'}`);
+      console.error("Error fetching students:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUploadMaterial = async () => {
-    const formData = new FormData();
-    formData.append('title', materialForm.title);
-    formData.append('type', materialForm.type);
-    formData.append('classId', id);
-    formData.append('category', materialForm.category);
-    formData.append('linkUrl', materialForm.linkUrl);
-    if (file) formData.append('file', file);
-
+  // --- FIXED: Function to Preview or Download Student Result Card PDF ---
+  const handleFetchResultCard = async (studentId, isDownload = false) => {
     try {
-      await axios.post('/api/material', formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      // 1. Fetch PDF binary stream with responseType: 'blob'
+      const response = await axios.get(`/api/report/${studentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob' // CRITICAL: Prevents 404/Parsing errors on binary files
       });
-      fetchMaterials();
-      alert('Uploaded!');
-    } catch (err) { alert('Upload failed'); }
+
+      // 2. Create local Blob URL
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const fileURL = window.URL.createObjectURL(blob);
+
+      if (isDownload) {
+        // Trigger file download
+        const link = document.createElement('a');
+        link.href = fileURL;
+        link.setAttribute('download', `ResultCard_Student_${studentId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        // Preview PDF in a new browser tab
+        window.open(fileURL, '_blank');
+      }
+    } catch (error) {
+      console.error("Error loading result card:", error);
+      alert("Could not load result card PDF. Please ensure the backend endpoint /api/report exists.");
+    }
   };
-
-  const handleCreateAssignment = async () => {
-    try {
-      await axios.post('/api/assignments', { ...assignmentForm, classId: id }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchAssignments();
-      alert('Assignment Created!');
-    } catch (err) { alert('Failed'); }
-  };
-
-  const handleSubmitAssignment = async (assignmentId) => {
-    if (!submissionFile) return alert('Please select a file');
-    const formData = new FormData();
-    formData.append('assignmentId', assignmentId);
-    formData.append('file', submissionFile);
-
-    try {
-      await axios.post('/api/submit-assignment', formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-      });
-      alert('Submitted!');
-      fetchAssignments();
-    } catch (err) { alert('Submission failed'); }
-  };
-
-  const handleSendMessage = async () => {
-    if(!newMessage.trim()) return;
-    try {
-      const res = await axios.post('/api/messages', { content: newMessage, classId: id }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessages([...messages, res.data]);
-      setNewMessage('');
-    } catch (err) { alert('Failed to send'); }
-  };
-
-  if (!classData) return <div className="container">Loading...</div>;
 
   return (
-    <div className="container">
-      <div className="title">{classData.className} - Content Hub</div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => setActiveTab('content')} className={activeTab === 'content' ? 'active-tab' : 'tab'}>Content</button>
-        <button onClick={() => setActiveTab('assignments')} className={activeTab === 'assignments' ? 'active-tab' : 'tab'}>Assignments</button>
-        <button onClick={() => setActiveTab('discussion')} className={activeTab === 'discussion' ? 'active-tab' : 'tab'}>Discussion</button>
-        <button onClick={() => setActiveTab('people')} className={activeTab === 'people' ? 'active-tab' : 'tab'}>Students</button>
+    <div className="container" style={{ padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2>Content Hub</h2>
+        <button onClick={() => navigate(-1)} style={{ background: '#555', color: '#fff', padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer' }}>
+          &larr; Go Back
+        </button>
       </div>
 
-      <style>{`
-        .tab { padding: 10px 20px; border: none; background: white; cursor: pointer; border-radius: 6px; }
-        .active-tab { padding: 10px 20px; border: none; background: #0a58ca; color: white; cursor: pointer; border-radius: 6px; }
-      `}</style>
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <button 
+          onClick={() => setActiveTab('content')} 
+          style={{ padding: '10px 20px', background: activeTab === 'content' ? '#1565C0' : '#f0f0f0', color: activeTab === 'content' ? '#fff' : '#000', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Content
+        </button>
+        <button 
+          onClick={() => setActiveTab('assignments')} 
+          style={{ padding: '10px 20px', background: activeTab === 'assignments' ? '#1565C0' : '#f0f0f0', color: activeTab === 'assignments' ? '#fff' : '#000', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Assignments
+        </button>
+        <button 
+          onClick={() => setActiveTab('discussion')} 
+          style={{ padding: '10px 20px', background: activeTab === 'discussion' ? '#1565C0' : '#f0f0f0', color: activeTab === 'discussion' ? '#fff' : '#000', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Discussion
+        </button>
+        <button 
+          onClick={() => setActiveTab('students')} 
+          style={{ padding: '10px 20px', background: activeTab === 'students' ? '#1565C0' : '#f0f0f0', color: activeTab === 'students' ? '#fff' : '#000', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Students
+        </button>
+      </div>
 
-      {/* CONTENT TAB */}
-      {activeTab === 'content' && (
-        <div>
-          {user.role === 'teacher' && (
-            <div className="card" style={{ marginBottom: '20px' }}>
-              <h3>Upload Content</h3>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <input placeholder="Title" onChange={e => setMaterialForm({...materialForm, title: e.target.value})} />
-                <select onChange={e => setMaterialForm({...materialForm, type: e.target.value})}>
-                  <option value="link">Link/URL</option>
-                  <option value="pdf">PDF Document</option>
-                  <option value="video">Video File</option>
-                </select>
-                {materialForm.type === 'link' ? (
-                  <input placeholder="URL (YouTube/Drive)" onChange={e => setMaterialForm({...materialForm, linkUrl: e.target.value})} />
-                ) : (
-                  <input type="file" onChange={e => setFile(e.target.files[0])} />
-                )}
-                <button onClick={handleUploadMaterial}>Upload</button>
-              </div>
-            </div>
-          )}
-          <div className="cards">
-            {materials.map(mat => (
-              <div key={mat.id} className="card">
-                <span style={{ fontSize: '12px', background: '#eee', padding: '4px 8px', borderRadius: '4px' }}>{mat.category}</span>
-                <h3 style={{ marginTop: '10px' }}>{mat.title}</h3>
-                {mat.type === 'link' ? (
-                  <a href={mat.url} target="_blank" rel="noreferrer" style={{ color: '#0a58ca' }}>Open Link</a>
-                ) : (
-                  <a href={`${mat.url}`} target="_blank" rel="noreferrer" style={{ color: '#0a58ca' }}>Download {mat.type.toUpperCase()}</a>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGNMENTS TAB */}
-      {activeTab === 'assignments' && (
-        <div>
-          {user.role === 'teacher' && (
-            <div className="card" style={{ marginBottom: '20px' }}>
-              <h3>Create Assignment</h3>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <input placeholder="Title" onChange={e => setAssignmentForm({...assignmentForm, title: e.target.value})} />
-                <textarea placeholder="Description" onChange={e => setAssignmentForm({...assignmentForm, description: e.target.value})} style={{ padding: '10px', borderRadius: '6px' }} />
-                <input type="date" onChange={e => setAssignmentForm({...assignmentForm, dueDate: e.target.value})} />
-                <button onClick={handleCreateAssignment}>Assign</button>
-              </div>
-            </div>
-          )}
-          <div className="cards">
-            {assignments.map(assign => (
-              <div key={assign.id} className="card">
-                <div style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                  <h3>{assign.title}</h3>
-                  <p>{assign.description}</p>
-                  <p style={{ fontSize: '14px', color: '#666' }}>Due: {new Date(assign.dueDate).toLocaleDateString()}</p>
-                </div>
-                {user.role === 'student' && (
-                  <div>
-                    {assign.Submissions && assign.Submissions.length > 0 ? (
-                      <p style={{ color: 'green', fontWeight: 'bold' }}>✔ Submitted</p>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <input type="file" onChange={e => setSubmissionFile(e.target.files[0])} />
-                        <button onClick={() => handleSubmitAssignment(assign.id)}>Submit</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {user.role === 'teacher' && (
-                  <div>
-                    <h4>Submissions ({assign.Submissions ? assign.Submissions.length : 0})</h4>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
-                      {assign.Submissions?.map(sub => (
-                        <li key={sub.id} style={{ marginTop: '5px', fontSize: '14px' }}>
-                          <strong>{sub.User?.fullName}:</strong> <a href={`${sub.fileUrl}`} target="_blank" rel="noreferrer">View File</a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* DISCUSSION TAB */}
-      {activeTab === 'discussion' && (
-        <div className="card" style={{ height: '500px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '10px', background: '#f9f9f9', borderRadius: '6px' }}>
-            {messages.map(msg => (
-              <div key={msg.id} style={{ marginBottom: '10px', padding: '10px', background: 'white', borderRadius: '6px', borderLeft: msg.Sender?.role === 'teacher' ? '4px solid #0a58ca' : '4px solid #ccc' }}>
-                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#555' }}>{msg.Sender?.fullName} ({msg.Sender?.role})</div>
-                <div style={{ marginTop: '4px' }}>{msg.content}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-            <input 
-              style={{ flex: 1 }} 
-              placeholder="Type a message..." 
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-            />
-            <button onClick={handleSendMessage} style={{ width: 'auto', marginTop: 0 }}>Send</button>
-          </div>
-        </div>
-      )}
-
-      {/* PEOPLE TAB */}
-      {activeTab === 'people' && (
-        <div className="table-box" style={{ overflowX: 'auto' }}>
+      {/* Students Tab View */}
+      {activeTab === 'students' && (
+        <div className="card" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h3>Enrolled Students</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Username</th>
-                {user.role === 'teacher' && <th>Result Card</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {classData.Users?.map(u => (
-                <tr key={u.id}>
-                  <td>{u.fullName}</td>
-                  <td>{u.username}</td>
-                  {user.role === 'teacher' && (
-                    <td>
-                      <div style={{ display: 'flex', gap: '5px' }}>
+          {loading ? (
+            <p>Loading students...</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+              <thead>
+                <tr style={{ background: '#f8f9fa', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
+                  <th style={{ padding: '12px' }}>NAME</th>
+                  <th style={{ padding: '12px' }}>USERNAME</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>RESULT CARD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                    <td style={{ padding: '12px' }}>{student.fullName || student.name}</td>
+                    <td style={{ padding: '12px' }}>{student.username}</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button 
-                          style={{ padding: '5px 10px', fontSize: '12px' }}
-                          onClick={() => generateResultCardPDF(u.id, u.fullName, 'preview')}
+                          onClick={() => handleFetchResultCard(student.id, false)}
+                          style={{ padding: '6px 12px', background: '#e0e0e0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
                         >
                           Preview Result Card
                         </button>
                         <button 
-                          style={{ padding: '5px 10px', fontSize: '12px' }}
-                          onClick={() => generateResultCardPDF(u.id, u.fullName, 'download')}
+                          onClick={() => handleFetchResultCard(student.id, true)}
+                          style={{ padding: '6px 12px', background: '#e0e0e0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
                         >
                           Download as PDF
                         </button>
                       </div>
                     </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </tr>
+                ))}
+                {students.length === 0 && (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No enrolled students found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
