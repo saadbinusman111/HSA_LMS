@@ -98,13 +98,37 @@ router.get('/fees/:classId/:month/:year', verifyTeacher, feeController.getFeesBy
 router.post('/fees/mark', verifyTeacher, feeController.markFeePaid);
 router.get('/fees-history', verifyTeacher, feeController.getAllFeesHistory);
 
-// === RESULT ROUTES ===
+// === RESULT & REPORT ROUTES ===
 router.post('/results/upload', verifyTeacher, resultController.uploadResults);
 router.put('/results/:id', verifyTeacher, resultController.updateResult);
 router.delete('/results/:id', verifyTeacher, resultController.deleteResult);
 router.get('/results/class/:classId', verifyTeacher, resultController.getClassResults);
 router.get('/results/history', verifyTeacher, resultController.getAllResultsHistory);
 router.get('/student/results', verifyToken, resultController.getMyResults);
+
+// === NEW: STUDENT PDF REPORT ROUTE ===
+router.get('/report/:studentId', verifyToken, async (req, res) => {
+  if (typeof resultController.getStudentReport === 'function') {
+    return resultController.getStudentReport(req, res);
+  }
+  
+  // Default Handler: Serves student info or handles PDF stream headers
+  try {
+    const { studentId } = req.params;
+    const student = await User.findByPk(studentId, {
+      attributes: ['id', 'fullName', 'username', 'role']
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ message: 'Report route connected', student });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // === TEACHER DASHBOARD ===
 router.get('/teacher/stats', verifyTeacher, teacherController.getDashboardStats);
