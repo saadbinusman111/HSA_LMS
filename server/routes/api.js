@@ -42,8 +42,38 @@ router.get('/classes', verifyToken, classController.getAllClasses);
 router.get('/classes/:id', verifyToken, classController.getClassDetails);
 router.delete('/classes/:id', verifyTeacher, classController.deleteClass);
 router.post('/enroll', verifyTeacher, classController.enrollStudent);
-// Added Remove Student Route
 router.delete('/classes/:classId/students/:userId', verifyTeacher, classController.removeStudentFromClass);
+
+// === NEW: FETCH ENROLLED STUDENTS FOR A CLASS HUB ===
+router.get('/classes/:classId/students', verifyToken, async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    // Check if classController handles this directly
+    if (typeof classController.getClassStudents === 'function') {
+      return classController.getClassStudents(req, res);
+    }
+    
+    // Fallback: Query Enrollment table and include User details directly
+    const enrollments = await Enrollment.findAll({
+      where: { classId },
+      include: [{
+        model: User,
+        attributes: ['id', 'fullName', 'username', 'role']
+      }]
+    });
+
+    // Extract student objects directly for frontend compatibility
+    const students = enrollments
+      .map(e => e.User)
+      .filter(u => u && u.role === 'student');
+
+    res.json(students);
+  } catch (err) {
+    console.error('Error fetching class students:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // === STUDENT MANAGEMENT (TEACHER ONLY) ===
 router.post('/register-student', verifyTeacher, authController.registerStudent);
@@ -106,13 +136,12 @@ router.get('/results/class/:classId', verifyTeacher, resultController.getClassRe
 router.get('/results/history', verifyTeacher, resultController.getAllResultsHistory);
 router.get('/student/results', verifyToken, resultController.getMyResults);
 
-// === NEW: STUDENT PDF REPORT ROUTE ===
+// === STUDENT PDF REPORT ROUTE ===
 router.get('/report/:studentId', verifyToken, async (req, res) => {
   if (typeof resultController.getStudentReport === 'function') {
     return resultController.getStudentReport(req, res);
   }
   
-  // Default Handler: Serves student info or handles PDF stream headers
   try {
     const { studentId } = req.params;
     const student = await User.findByPk(studentId, {
