@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -24,29 +23,27 @@ export default function CourseView() {
       const res = await axios.get(`/api/classes/${id}/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setStudents(res.data);
+      setStudents(res.data || []);
     } catch (err) {
       console.error("Error fetching students:", err);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- FIXED: Function to Preview or Download Student Result Card PDF ---
+  // --- Function to Preview or Download Student Result Card PDF ---
   const handleFetchResultCard = async (studentId, isDownload = false) => {
     try {
-      // 1. Fetch PDF binary stream with responseType: 'blob'
       const response = await axios.get(`/api/report/${studentId}`, {
         headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob' // CRITICAL: Prevents 404/Parsing errors on binary files
+        responseType: 'blob' // Required for PDF streaming
       });
 
-      // 2. Create local Blob URL
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const fileURL = window.URL.createObjectURL(blob);
 
       if (isDownload) {
-        // Trigger file download
         const link = document.createElement('a');
         link.href = fileURL;
         link.setAttribute('download', `ResultCard_Student_${studentId}.pdf`);
@@ -54,12 +51,11 @@ export default function CourseView() {
         link.click();
         link.remove();
       } else {
-        // Preview PDF in a new browser tab
         window.open(fileURL, '_blank');
       }
     } catch (error) {
       console.error("Error loading result card:", error);
-      alert("Could not load result card PDF. Please ensure the backend endpoint /api/report exists.");
+      alert("Could not load result card PDF.");
     }
   };
 
