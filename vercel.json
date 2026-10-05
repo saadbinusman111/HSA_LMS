@@ -17,12 +17,12 @@
       "destination": "/server/index.js"
     },
     {
-      "source": "/(.*)",
-      "destination": "/client/$1"
+      "source": "/report/(.*)",
+      "destination": "/server/index.js"
     },
     {
       "source": "/(.*)",
-      "destination": "/client/index.html"
+      "destination": "/client/$1"
     }
   ]
 }
